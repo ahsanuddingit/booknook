@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LockKeyholeIcon, MailIcon, UserRoundIcon } from "lucide-react";
+import { LockKeyholeIcon, MailIcon, UserRoundIcon, ImageIcon } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [photoURL, setPhotoURL] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -23,18 +24,45 @@ export default function RegisterPage() {
     if (hydrated && user) router.replace("/");
   }, [hydrated, user, router]);
 
+  // Password validation helper based on requirements
+  const validatePassword = (pass: string) => {
+    if (pass.length < 6) {
+      return "Password must be at least 6 characters long.";
+    }
+    if (!/[A-Z]/.test(pass)) {
+      return "Password must contain at least one uppercase letter.";
+    }
+    if (!/[a-z]/.test(pass)) {
+      return "Password must contain at least one lowercase letter.";
+    }
+    return null;
+  };
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!name.trim() || !email.trim() || pending) return;
     setErrorMessage(null);
+
+    // Run password validation criteria check
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setErrorMessage(passwordError);
+      return;
+    }
+
     setPending(true);
+    
+    // Note: passing photoURL or handling extra fields if supported by auth provider
     const failure = await register(name.trim(), email.trim(), password);
+    
     if (failure) {
       setErrorMessage(failure);
       setPending(false);
       return;
     }
-    router.replace("/");
+    
+    // Successfully registered -> navigate to Login page (or Home per auth flow)
+    router.replace("/login");
   }
 
   return (
@@ -89,6 +117,23 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="photoURL" className="text-[13px] font-semibold text-ink">
+              Photo URL <span className="text-ink-muted font-normal">(Optional)</span>
+            </Label>
+            <div className="relative">
+              <ImageIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" />
+              <Input
+                id="photoURL"
+                type="url"
+                placeholder="https://example.com/photo.jpg"
+                value={photoURL}
+                onChange={(event) => setPhotoURL(event.target.value)}
+                className="h-11 rounded-xl pl-9 text-[15px] focus-visible:ring-brand/25"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
             <Label
               htmlFor="password"
               className="text-[13px] font-semibold text-ink"
@@ -101,7 +146,6 @@ export default function RegisterPage() {
                 id="password"
                 type="password"
                 required
-                minLength={8}
                 autoComplete="new-password"
                 placeholder="Create a password"
                 value={password}
@@ -109,6 +153,9 @@ export default function RegisterPage() {
                 className="h-11 rounded-xl pl-9 text-[15px] focus-visible:ring-brand/25"
               />
             </div>
+            <p className="text-[11px] text-ink-muted">
+              Must be at least 6 characters long and include an uppercase and lowercase letter.
+            </p>
           </div>
 
           {errorMessage ? (
@@ -123,22 +170,4 @@ export default function RegisterPage() {
           <Button
             type="submit"
             disabled={pending}
-            className="h-11 w-full rounded-full bg-gradient-to-r from-[#9a7bf1] to-[#7a5bdf] text-[15px] font-semibold text-white shadow-[0_10px_24px_-10px_rgba(122,91,223,0.8)] transition hover:from-[#8f6fe9] hover:to-[#6d4fd4] disabled:opacity-60"
-          >
-            {pending ? "Creating account…" : "Create account"}
-          </Button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-ink-muted">
-          Already have an account?{" "}
-          <Link
-            href="/login"
-            className="font-semibold text-brand transition hover:text-brand-dark"
-          >
-            Login
-          </Link>
-        </p>
-      </div>
-    </section>
-  );
-}
+            className="h-11 w-full rounded-full bg-gradient-to-r from-[#9a7bf1] to-[#7a5bdf] text-[15px] font-semibold text-white shadow-[0_10px_24px_-10px_rgba(122,9

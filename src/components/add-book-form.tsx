@@ -109,6 +109,8 @@ export function AddBookForm() {
     description: `${formId}-description`,
     image: `${formId}-image`,
     totalCopies: `${formId}-copies`,
+    userName: `${formId}-username`,
+    userEmail: `${formId}-useremail`,
   };
 
   const previewSrc = values.image.trim();
@@ -163,6 +165,7 @@ export function AddBookForm() {
           totalCopies: Number(values.totalCopies),
           userEmail: user?.email,
           userName: user?.name,
+          addedDate: new Date().toISOString(), // Saving the date it was added
         }),
       });
 
@@ -261,6 +264,7 @@ export function AddBookForm() {
         ) : null}
 
         <div className="mt-7 grid gap-5 sm:grid-cols-2">
+          {/* Book Title */}
           <div className="sm:col-span-2">
             <Label htmlFor={ids.title} className="text-[13px] font-semibold text-ink">
               Book title <span className="text-brand">*</span>
@@ -283,6 +287,7 @@ export function AddBookForm() {
             ) : null}
           </div>
 
+          {/* Author Name */}
           <div>
             <Label htmlFor={ids.author} className="text-[13px] font-semibold text-ink">
               Author <span className="text-brand">*</span>
@@ -305,6 +310,7 @@ export function AddBookForm() {
             ) : null}
           </div>
 
+          {/* Category Select Box */}
           <div>
             <Label htmlFor={ids.category} className="text-[13px] font-semibold text-ink">
               Category <span className="text-brand">*</span>
@@ -346,6 +352,7 @@ export function AddBookForm() {
             ) : null}
           </div>
 
+          {/* Total Copies */}
           <div>
             <Label htmlFor={ids.totalCopies} className="text-[13px] font-semibold text-ink">
               Total copies <span className="text-brand">*</span>
@@ -379,6 +386,7 @@ export function AddBookForm() {
             )}
           </div>
 
+          {/* Cover Image URL */}
           <div>
             <Label htmlFor={ids.image} className="text-[13px] font-semibold text-ink">
               Cover image URL <span className="text-brand">*</span>
@@ -402,18 +410,46 @@ export function AddBookForm() {
               </p>
             ) : (
               <p className="mt-1.5 text-xs text-ink-muted">
-                A direct link works best.
+                A direct link works best (imgbb / postimage).
               </p>
             )}
           </div>
 
+          {/* Read-only User Name & Email */}
+          <div>
+            <Label htmlFor={ids.userName} className="text-[13px] font-semibold text-ink">
+              User Name (Logged In)
+            </Label>
+            <Input
+              id={ids.userName}
+              value={user?.name || "Loading user..."}
+              readOnly
+              disabled
+              className={cn(fieldClass, "mt-2 bg-slate-50 text-ink-muted cursor-not-allowed")}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor={ids.userEmail} className="text-[13px] font-semibold text-ink">
+              User Email (Logged In)
+            </Label>
+            <Input
+              id={ids.userEmail}
+              value={user?.email || "Loading email..."}
+              readOnly
+              disabled
+              className={cn(fieldClass, "mt-2 bg-slate-50 text-ink-muted cursor-not-allowed")}
+            />
+          </div>
+
+          {/* Short Description */}
           <div className="sm:col-span-2">
             <div className="flex items-center justify-between gap-4">
               <Label
                 htmlFor={ids.description}
                 className="text-[13px] font-semibold text-ink"
               >
-                Description <span className="text-brand">*</span>
+                Short Description <span className="text-brand">*</span>
               </Label>
               <span className="text-[11px] font-medium text-ink-muted tabular-nums">
                 {values.description.trim().length} characters
@@ -474,13 +510,14 @@ export function AddBookForm() {
             ) : (
               <>
                 <PlusIcon className="size-4" />
-                Add book to the nook
+                Add Book
               </>
             )}
           </Button>
         </div>
       </form>
 
+      {/* Live Preview Sidebar */}
       <aside className="space-y-5 lg:sticky lg:top-24">
         <div className="overflow-hidden rounded-[1.75rem] border border-line bg-white shadow-[0_24px_60px_-55px_rgba(47,44,61,0.45)]">
           <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
@@ -543,30 +580,6 @@ export function AddBookForm() {
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="rounded-[1.75rem] border border-line bg-brand-tint/70 p-5">
-          <p className="flex items-center gap-2 text-[11px] font-bold tracking-[0.14em] text-brand uppercase">
-            <SparklesIcon className="size-3.5" />
-            Before you add
-          </p>
-          <ul className="mt-4 space-y-3 text-xs leading-5 text-ink-muted">
-            <li className="flex gap-2.5">
-              <CheckCircle2Icon className="mt-0.5 size-3.5 shrink-0 text-brand/70" />
-              Use a direct cover link that ends in .jpg, .png, or .webp for a
-              crisp preview.
-            </li>
-            <li className="flex gap-2.5">
-              <CheckCircle2Icon className="mt-0.5 size-3.5 shrink-0 text-brand/70" />
-              Available copies start equal to the total, then drop as readers
-              borrow.
-            </li>
-            <li className="flex gap-2.5">
-              <CheckCircle2Icon className="mt-0.5 size-3.5 shrink-0 text-brand/70" />
-              A warm, specific description helps your book find its next
-              reader.
-            </li>
-          </ul>
         </div>
       </aside>
     </div>

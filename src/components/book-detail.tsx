@@ -7,6 +7,7 @@ import {
   BookOpenIcon,
   CheckCircle2Icon,
   XCircleIcon,
+  BookmarkCheckIcon,
 } from "lucide-react";
 
 import { cn } from "cn";
@@ -44,6 +45,11 @@ export function BookDetail({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Borrow action states
+  const [borrowing, setBorrowing] = useState(false);
+  const [borrowed, setBorrowed] = useState(false);
+  const [borrowError, setBorrowError] = useState<string | null>(null);
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -67,6 +73,30 @@ export function BookDetail({ id }: { id: string }) {
 
     return () => controller.abort();
   }, [id]);
+
+  const handleBorrow = async () => {
+    setBorrowing(true);
+    setBorrowError(null);
+
+    try {
+      const res = await fetch(`/api/books/${id}/borrow`, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to process borrow request.");
+      }
+
+      setBorrowed(true);
+    } catch (err: unknown) {
+      setBorrowError(
+        err instanceof Error ? err.message : "Could not borrow this book at the moment."
+      );
+    } finally {
+      setBorrowing(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -163,6 +193,53 @@ export function BookDetail({ id }: { id: string }) {
           <p className="mt-3 text-[15px] leading-7 whitespace-pre-line text-ink-muted">
             {book.description}
           </p>
+        </div>
+
+        {/* Borrow System Action Area */}
+        <div className="mt-8 rounded-2xl border border-line bg-brand-soft/30 p-5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-ink">Ready to read?</h3>
+              <p className="text-xs text-ink-muted mt-0.5">
+                {borrowed
+                  ? "You have successfully borrowed this book."
+                  : isAvailable
+                  ? "Borrow a copy to add it to your reading list."
+                  : "All copies are currently checked out."}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleBorrow}
+              disabled={!isAvailable || borrowing || borrowed}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white transition shadow-sm",
+                borrowed
+                  ? "bg-emerald-600 cursor-default"
+                  : !isAvailable
+                  ? "bg-ink-muted/40 cursor-not-allowed"
+                  : "bg-brand hover:bg-brand-dark"
+              )}
+            >
+              {borrowed ? (
+                <>
+                  <BookmarkCheckIcon className="size-4" />
+                  Borrowed Successfully
+                </>
+              ) : borrowing ? (
+                "Processing..."
+              ) : (
+                "Borrow This Book"
+              )}
+            </button>
+          </div>
+
+          {borrowError && (
+            <p className="mt-3 text-xs font-medium text-rose-600">
+              {borrowError}
+            </p>
+          )}
         </div>
 
         <div className="mt-8">

@@ -41,7 +41,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { label: "Home", href: "/" },
   { label: "All Books", href: "/books" },
-  { label: "Add Book", href: "/books/add", private: true },
+  { label: "Add Book", href: "/books/add-book", private: true },
   { label: "My Books", href: "/my-books", private: true },
   { label: "My Borrows", href: "/my-borrows", private: true },
 ];

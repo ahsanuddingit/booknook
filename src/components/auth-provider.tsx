@@ -1,12 +1,8 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useSyncExternalStore,
-} from "react";
+import { createContext, useCallback, useContext, useMemo } from "react";
+
+import { authClient } from "@/lib/auth-client";
 
 export type SessionUser = {
   name: string;
@@ -16,136 +12,67 @@ export type SessionUser = {
 
 type AuthContextValue = {
   user: SessionUser | null;
-  /** False until the stored session has been read on the client. */
+  /** False until the server has told us whether a session cookie exists. */
   hydrated: boolean;
-  login: (email: string, password: string) => void;
-  register: (name: string, email: string, password: string) => void;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<string | null>;
+  register: (
+    name: string,
+    email: string,
+    password: string
+  ) => Promise<string | null>;
+  logout: () => Promise<void>;
 };
-
-const SESSION_KEY = "booknook:session";
-const ACCOUNT_KEY = "booknook:account";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const listeners = new Set<() => void>();
-let cachedRaw: string | null = null;
-let cachedUser: SessionUser | null = null;
-
-function readRaw() {
-  try {
-    return window.localStorage.getItem(SESSION_KEY);
-  } catch {
-    return null;
-  }
-}
-
-/** localStorage is the external store, so the session survives reloads. */
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  const onStorage = (event: StorageEvent) => {
-    if (event.key === SESSION_KEY) listener();
-  };
-  window.addEventListener("storage", onStorage);
-  return () => {
-    listeners.delete(listener);
-    window.removeEventListener("storage", onStorage);
-  };
-}
-
-function getSnapshot() {
-  const raw = readRaw();
-  if (raw !== cachedRaw) {
-    cachedRaw = raw;
-    try {
-      cachedUser = raw ? (JSON.parse(raw) as SessionUser) : null;
-    } catch {
-      cachedUser = null;
-    }
-  }
-  return cachedUser;
-}
-
-function getServerSnapshot() {
-  return null;
-}
-
-function notify() {
-  listeners.forEach((listener) => listener());
-}
-
-function displayNameFromEmail(email: string) {
-  const [handle] = email.split("@");
-  return handle
-    .split(/[._-]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-const noopSubscribe = () => () => {};
-
 /**
- * Client-side session store used by the navbar.
- * It is intentionally dependency-free demo auth: swap the bodies of
- * `login` / `register` / `logout` for real API calls when a backend exists.
+ * Client-side session store backed by real Better Auth endpoints
+ * (`/api/auth/*`), which persist users and sessions in MongoDB.
+ * `login`, `register`, and `logout` return a human-readable error
+ * message on failure so pages can render it inline.
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const user = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const hydrated = useSyncExternalStore(
-    noopSubscribe,
-    () => true,
-    () => false
-  );
+  const { data: session, isPending } = authClient.useSession();
 
-  const persist = useCallback((next: SessionUser | null) => {
-    try {
-      if (next) {
-        window.localStorage.setItem(SESSION_KEY, JSON.stringify(next));
-      } else {
-        window.localStorage.removeItem(SESSION_KEY);
-      }
-    } catch {
-      // Storage can be unavailable in private mode; the session still works.
-    }
-    notify();
-  }, []);
+  const user = useMemo<SessionUser | null>(() => {
+    const authUser = session?.user;
+    if (!authUser) return null;
+    return {
+      name: authUser.name,
+      email: authUser.email,
+      avatar: authUser.image ?? undefined,
+    };
+  }, [session]);
 
   const login = useCallback(
-    (email: string, password: string) => {
-      void password; // Demo auth: no password verification yet.
-      let name = displayNameFromEmail(email);
-      try {
-        const raw = window.localStorage.getItem(ACCOUNT_KEY);
-        const account = raw ? (JSON.parse(raw) as SessionUser) : null;
-        if (account?.email === email) name = account.name;
-      } catch {
-        // Fall back to the generated name.
+    async (email: string, password: string) => {
+      const { error } = await authClient.signIn.email({ email, password });
+      if (error) {
+        return error.message || "Invalid email or password.";
       }
-      persist({ name, email, avatar: "/avatar-demo.svg" });
+      return null;
     },
-    [persist]
+    []
   );
 
   const register = useCallback(
-    (name: string, email: string, password: string) => {
-      void password; // Demo auth: no password verification yet.
-      const next = { name, email, avatar: "/avatar-demo.svg" };
-      try {
-        window.localStorage.setItem(ACCOUNT_KEY, JSON.stringify(next));
-      } catch {
-        // Storage can be unavailable in private mode; the session still works.
+    async (name: string, email: string, password: string) => {
+      const { error } = await authClient.signUp.email({ name, email, password });
+      if (error) {
+        return error.message || "Unable to create an account. Please try again.";
       }
-      persist(next);
+      return null;
     },
-    [persist]
+    []
   );
 
-  const logout = useCallback(() => persist(null), [persist]);
+  const logout = useCallback(async () => {
+    await authClient.signOut();
+  }, []);
 
   const value = useMemo(
-    () => ({ user, hydrated, login, register, logout }),
-    [user, hydrated, login, register, logout]
+    () => ({ user, hydrated: !isPending, login, register, logout }),
+    [user, isPending, login, register, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -105,6 +105,14 @@ function BookCard({ book }: { book: Book }) {
             {available} / {total} copies
           </span>
         </div>
+        <div className="mt-4">
+          <Link
+            href={`/books/${book._id}`}
+            className="inline-flex items-center gap-2 rounded-full border border-brand bg-brand/10 px-3 py-1.5 text-sm font-semibold text-brand hover:bg-brand/20 transition"
+          >
+            View Details
+          </Link>
+        </div>
       </div>
     </article>
   );

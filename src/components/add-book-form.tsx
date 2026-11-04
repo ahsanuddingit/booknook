@@ -161,8 +161,8 @@ export function AddBookForm() {
           description: values.description.trim(),
           image: values.image.trim(),
           totalCopies: Number(values.totalCopies),
-          ownerEmail: user?.email,
-          ownerName: user?.name,
+          userEmail: user?.email,
+          userName: user?.name,
         }),
       });
 

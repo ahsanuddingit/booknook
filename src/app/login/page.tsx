@@ -15,16 +15,25 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
   useEffect(() => {
     if (hydrated && user) router.replace("/");
   }, [hydrated, user, router]);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!email.trim()) return;
-    login(email.trim(), password);
-    router.push("/");
+    if (!email.trim() || pending) return;
+    setErrorMessage(null);
+    setPending(true);
+    const failure = await login(email.trim(), password);
+    if (failure) {
+      setErrorMessage(failure);
+      setPending(false);
+      return;
+    }
+    router.replace("/");
   }
 
   return (
@@ -82,11 +91,21 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {errorMessage ? (
+            <div
+              role="alert"
+              className="rounded-xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-[13px] font-medium text-destructive"
+            >
+              {errorMessage}
+            </div>
+          ) : null}
+
           <Button
             type="submit"
-            className="h-11 w-full rounded-full bg-gradient-to-r from-[#9a7bf1] to-[#7a5bdf] text-[15px] font-semibold text-white shadow-[0_10px_24px_-10px_rgba(122,91,223,0.8)] transition hover:from-[#8f6fe9] hover:to-[#6d4fd4]"
+            disabled={pending}
+            className="h-11 w-full rounded-full bg-gradient-to-r from-[#9a7bf1] to-[#7a5bdf] text-[15px] font-semibold text-white shadow-[0_10px_24px_-10px_rgba(122,91,223,0.8)] transition hover:from-[#8f6fe9] hover:to-[#6d4fd4] disabled:opacity-60"
           >
-            Login
+            {pending ? "Logging in…" : "Login"}
           </Button>
         </form>
 

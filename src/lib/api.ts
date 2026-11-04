@@ -16,8 +16,8 @@ export type Book = {
   totalCopies?: number;
   availableCopies?: number;
   createdAt?: string;
-  ownerEmail?: string;
-  ownerName?: string;
+  userEmail?: string;
+  userName?: string;
 };
 
 const TOKEN_KEYS = [

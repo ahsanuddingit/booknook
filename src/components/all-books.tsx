@@ -140,6 +140,17 @@ export function AllBooks() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
 
+  // Home category cards deep-link here as /books?category=… (no
+  // useSearchParams — it breaks prerender under cacheComponents).
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get(
+      "category"
+    );
+    if (requested && requested !== "All") {
+      setCategory(requested);
+    }
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
 

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  ArrowRightIcon,
   BookmarkPlusIcon,
   BookOpenIcon,
   RefreshCwIcon,
@@ -98,13 +99,24 @@ function FeaturedBook({ book }: { book: Book }) {
         {book.category}
       </p>
 
-      <Link
-        href="/books"
-        className="mt-5 inline-flex h-11 items-center gap-2 border-2 border-ink bg-white px-6 text-[11px] font-bold tracking-[0.12em] text-ink uppercase transition-colors hover:bg-ink hover:text-white focus-visible:ring-4 focus-visible:ring-brand/20 focus-visible:outline-none"
-      >
-        <BookmarkPlusIcon className="size-4" />
-        Borrow Now
-      </Link>
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <Link
+          href={`/books/${book._id}`}
+          className="group inline-flex h-11 items-center gap-3 rounded-full bg-ink pr-5 pl-7 text-sm font-semibold text-white shadow-[0_14px_30px_-16px_rgba(47,44,61,0.7)] transition-colors hover:bg-brand focus-visible:ring-4 focus-visible:ring-brand/25 focus-visible:outline-none"
+        >
+          View Details
+          <span className="flex size-7 items-center justify-center rounded-full bg-white/15 transition-transform group-hover:translate-x-0.5">
+            <ArrowRightIcon className="size-3.5" />
+          </span>
+        </Link>
+        <Link
+          href="/books"
+          className="inline-flex h-11 items-center gap-2 border-2 border-ink bg-white px-6 text-[11px] font-bold tracking-[0.12em] text-ink uppercase transition-colors hover:bg-ink hover:text-white focus-visible:ring-4 focus-visible:ring-brand/20 focus-visible:outline-none"
+        >
+          <BookmarkPlusIcon className="size-4" />
+          Borrow Now
+        </Link>
+      </div>
     </div>
   );
 }
@@ -142,7 +154,7 @@ function TrendingCard({ book, badge }: { book: Book; badge?: boolean }) {
 
       <h3 className="mt-1.5 line-clamp-2 text-sm leading-snug font-medium text-ink">
         <Link
-          href="/books"
+          href={`/books/${book._id}`}
           className="underline decoration-ink/25 decoration-1 underline-offset-4 transition-colors hover:text-brand focus-visible:ring-4 focus-visible:ring-brand/20 focus-visible:outline-none"
         >
           {book.title}
@@ -150,11 +162,11 @@ function TrendingCard({ book, badge }: { book: Book; badge?: boolean }) {
       </h3>
 
       <Link
-        href="/books"
-        className="mt-2.5 inline-flex items-center gap-1.5 text-[9px] font-bold tracking-[0.12em] text-ink uppercase underline decoration-ink/40 underline-offset-4 transition-colors hover:text-brand focus-visible:ring-4 focus-visible:ring-brand/20 focus-visible:outline-none sm:text-[10px]"
+        href={`/books/${book._id}`}
+        className="mt-2.5 inline-flex items-center gap-1.5 rounded-full border border-brand bg-brand/10 px-3 py-1 text-[9px] font-bold tracking-[0.12em] text-brand uppercase transition-colors hover:bg-brand/20 focus-visible:ring-4 focus-visible:ring-brand/20 focus-visible:outline-none sm:text-[10px]"
       >
-        <BookmarkPlusIcon className="size-3.5" />
-        Borrow
+        <BookOpenIcon className="size-3.5" />
+        View Details
       </Link>
     </article>
   );

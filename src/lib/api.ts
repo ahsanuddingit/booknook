@@ -1,6 +1,7 @@
 /**
- * Small client for the BookNook Express API.
- * The server defaults to port 8000; override it with NEXT_PUBLIC_API_URL.
+ * The BookNook Express API origin. Requests go through this app's same-origin
+ * proxy (`/api/proxy/[...path]`), which attaches the BetterAuth JWT server-side;
+ * this value remains only as the public API address shown in error messages.
  */
 export const API_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
@@ -123,16 +124,15 @@ export async function apiFetch<T>(
   init: RequestInit = {}
 ): Promise<T> {
   const headers = new Headers(init.headers);
-  const token = (await getJwtToken()) ?? getAuthToken();
 
   if (init.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
 
-  const response = await fetch(`${API_URL}${path}`, { ...init, headers });
+  // Same-origin proxy: the JWT for the Express `verifyToken` middleware is
+  // attached server-side (see src/lib/api-server.ts), so no Bearer header
+  // and no credentials handling are needed in the browser.
+  const response = await fetch(`/api/proxy${path}`, { ...init, headers });
   const payload = (await response.json().catch(() => null)) as
     | T
     | ErrorPayload

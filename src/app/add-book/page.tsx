@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
-
 import { AddBookForm } from "@/components/add-book-form";
 import { PageShell } from "@/components/page-shell";
 import { RequireAuth } from "@/components/require-auth";
 
-export const metadata: Metadata = {
-  title: "Add Book",
-};
+export const metadata: Metadata = { title: "Add Book" };
 
 export default function AddBookPage() {
   return (

@@ -7,7 +7,7 @@ import { CurrentYear } from "@/components/current-year";
 const EXPLORE_LINKS = [
   { label: "Home", href: "/" },
   { label: "All Books", href: "/books" },
-  { label: "Add a Book", href: "/books/add" },
+  { label: "Add a Book", href: "/add-book" },
   { label: "My Books", href: "/my-books" },
 ];
 

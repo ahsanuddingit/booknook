@@ -26,22 +26,25 @@ There is no `test` script, test suite, or CI workflow.
 
 - Books come from the Express API through `src/lib/api.ts` (`API_URL`, `apiFetch`), **not** MongoDB. `NEXT_PUBLIC_API_URL` is optional; the fallback is `http://localhost:8000`, with trailing slashes stripped.
 - Catalog list, home trending, and add-book POST call Express directly. Detail is the exception: `book-detail.tsx` calls the Next proxy `/api/books/[id]`, which tries Express `GET /books/:id` then falls back to filtering `GET /books` by `_id` (the Express API may only expose the collection endpoint).
-- Express endpoints currently used: `GET /books`, `POST /books`, and optionally `GET /books/:id`. No borrow/return endpoints are wired.
-- `/books` and home trending need the Express API at runtime; the UI shows an error card with the API URL. `npm run build` does not need the Express API.
-- `/my-books`, `/my-borrows`, and `/profile` are placeholder `EmptyState` pages; only browse, detail, and add are implemented.
+- Express endpoints currently used: `GET /books`, `POST /books`, `PATCH /books/:id`, `DELETE /books/:id`, `GET /books/:id` (via the Next proxy), `POST /borrows`, `GET /borrows`, `DELETE /borrows/:id`. The full borrow/return loop is wired end to end.
+- `/books`, `/books/[id]`, and home trending need the Express API at runtime; the UI shows an error card with the API URL. `npm run build` does not need the Express API.
+- Route status: all real and private routes wrap themselves in `RequireAuth` — `/books`, `/books/[id]` (private), add-book (`/add-book`, moved from `/books/add-book`), `/my-books`, `/my-borrows` (`MyBorrowsTable` in `my-borrows-client.tsx`), `/profile` (`ProfileClient` uses `authClient.updateUser`).
+- Book images upload to **imgbb** from `add-book-form.tsx` using `NEXT_PUBLIC_IMGBB_API_KEY`; if the key is missing the form degrades to manual URL paste.
+- Toasts go through `src/lib/toast.ts` (imperative `showToast.success/error` store) rendered by `AppToaster` mounted in the root layout.
+- `my-books` filters `GET /books` by `user.email` client-side (the Express API has no per-user filter); updates use `PATCH /books/:id` (not PUT — the server only implements PATCH).
 - `cleanup-account.mjs` is a one-off manual Mongo cleanup script with hardcoded IDs. It is not app code and is not part of build/test flows.
 
 ## Auth
 
 - Server: `src/lib/auth.ts` — better-auth + `@better-auth/mongo-adapter`, database `booknook-User`, collections such as `user`, `account`, `session`. Exposed by `src/app/api/auth/[...all]/route.ts` via `toNextJsHandler`.
 - Client: `src/lib/auth-client.ts` — `createAuthClient` with `jwtClient()`, intentionally no `baseURL` (same-origin works in dev and prod). `AuthProvider` exposes `user`, `hydrated`, `login`, `register`, `logout`; `login`/`register` return a `string | null` error for inline display.
-- `RequireAuth` is a **client-side redirect gate only**, not server-side security. Private routes are `/books/add`, `/my-books`, `/my-borrows`, `/profile`; a new private route needs both `RequireAuth` and a `NAV_ITEMS` entry in `src/components/site-header.tsx`.
-- **Token gap:** `apiFetch` attaches a Bearer token from localStorage/sessionStorage keys `booknook:token`, `booknook:jwt`, `better-auth-token`, `auth_token`, but nothing in the repo writes one. `auth.ts` also does not enable the server `jwt()` plugin, and `apiFetch` does not send credentials. Login sets a session cookie scoped to the Next origin; cross-origin Express calls won't receive it. Don't assume a logged-in user is authenticated to the Express API — `add-book-form` handles 401 explicitly.
+- `RequireAuth` is a **client-side redirect gate only**, not server-side security. Private routes are `/add-book`, `/books/[id]`, `/books`, `/my-books`, `/my-borrows`, `/profile`; each wraps it itself, and a new private route also needs a `NAV_ITEMS` entry in `src/components/site-header.tsx` (only for top-navigable routes — detail pages don't need one).
+- **Token flow (wired):** `apiFetch` first tries a short-lived BetterAuth JWT from the same-origin `/api/auth/token` endpoint (`getJwtToken` in `src/lib/api.ts`, cached in memory until just before its `exp`, refreshed lazily; falls back to legacy localStorage keys). `src/lib/auth.ts` enables the `jwt()` server plugin so `/api/auth/jwks` exists and the Express `verifyToken` (jose, remote JWKS at `CLIENT_URL`) can verify. Because the token fetch is same-origin over the session cookie, no credentials handling is needed.
 - `@better-auth/mongo-adapter` is imported directly but only declared transitively by `better-auth`. Declare it in `package.json` if you change package managers or dependency layout.
 
 ## Environment
 
-- `.env` is gitignored and there is no example file. It needs `MONGODB_URI`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`; add `NEXT_PUBLIC_API_URL` only if Express is not on port 8000.
+- `.env` is gitignored and there is no example file. It needs `MONGODB_URI`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_IMGBB_API_KEY` (imgbb upload key, currently a placeholder); add `NEXT_PUBLIC_API_URL` only if Express is not on port 8000. The Express server's sibling `.env` (`booknook-server/.env`) needs `MONGODB_URI` and `CLIENT_URL` (the Next origin used for JWKS verification).
 - `.env` must be UTF-8 **without a BOM**. A BOM makes Next load variables as `undefined` (e.g. `MongoClient` throws `Cannot read properties of undefined (reading 'startsWith')`).
 - Only `NEXT_PUBLIC_*` variables are available in browser code.
 
@@ -55,6 +58,7 @@ There is no `test` script, test suite, or CI workflow.
 
 ## Gotchas
 
+- **Build fixed (2026-11-05):** the two pre-existing WIP failures are resolved — `src/app/register/page.tsx` had a truncated `shadow-[...]` string (now completed), and `src/app/my-books/page.tsx` imports `MyBooksClient` from `@/components/my-books-client` wrapped in `RequireAuth`. Treat any new `npm run build` errors as fresh regressions.
 - **`npm run lint` is broken:** installed `eslint-config-next@15.5.29` exports the legacy `{ extends }` config, while `eslint.config.mjs` uses Next 16 flat-config imports (`...nextVitals`). ESLint fails with `ERR_MODULE_NOT_FOUND` or `nextVitals is not iterable`. Align the package with Next by bumping `eslint-config-next` to `16.4.5`, or rewrite the config with `FlatCompat`. Until then, rely on `npm run build`.
 - `npm run build` must show `Cache Components enabled`, `Partial Prefetching enabled`, `Compiled successfully`, and a route table where `/books/[id]` is partial prerender and `/api/auth/[...all]` / `/api/books/[id]` are dynamic.
 

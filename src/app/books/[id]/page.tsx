@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { BookDetail } from "@/components/book-detail";
 import { PageShell } from "@/components/page-shell";
+import { RequireAuth } from "@/components/require-auth";
 
 export const metadata: Metadata = {
   title: "Book Details",
@@ -25,12 +26,14 @@ export default async function BookDetailPage({
   const { id } = await params;
 
   return (
-    <PageShell
-      eyebrow="On the shelf"
-      title="Book Details"
-      description="Everything you need to know before you borrow this story."
-    >
-      <BookDetail id={id} />
-    </PageShell>
+    <RequireAuth>
+      <PageShell
+        eyebrow="On the shelf"
+        title="Book Details"
+        description="Everything you need to know before you borrow this story."
+      >
+        <BookDetail id={id} />
+      </PageShell>
+    </RequireAuth>
   );
 }

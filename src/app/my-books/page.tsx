@@ -1,26 +1,19 @@
 import type { Metadata } from "next";
-import { BookmarkIcon } from "lucide-react";
-
-import { EmptyState, PageShell } from "@/components/page-shell";
+import { MyBooksClient } from "@/components/my-books-client";
+import { PageShell } from "@/components/page-shell";
 import { RequireAuth } from "@/components/require-auth";
 
-export const metadata: Metadata = {
-  title: "My Books",
-};
+export const metadata: Metadata = { title: "My Books" };
 
 export default function MyBooksPage() {
   return (
     <RequireAuth>
       <PageShell
-        eyebrow="Your shelf"
+        eyebrow="Contributions"
         title="My Books"
-        description="The books you have shared with the nook, all in one place."
+        description="Manage, update, or remove the books you have added to the community catalog."
       >
-        <EmptyState
-          icon={<BookmarkIcon className="size-5" />}
-          title="No books on your shelf yet"
-          description="Books you add to BookNook will be listed here."
-        />
+        <MyBooksClient />
       </PageShell>
     </RequireAuth>
   );

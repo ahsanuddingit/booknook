@@ -8,10 +8,14 @@ import {
   CheckCircle2Icon,
   XCircleIcon,
   BookmarkCheckIcon,
+  Loader2Icon,
+  XIcon,
 } from "lucide-react";
 
 import { cn } from "cn";
-import type { Book } from "@/lib/api";
+import { useAuth } from "@/components/auth-provider";
+import { ApiError, apiFetch, type Book } from "@/lib/api";
+import { showToast } from "@/lib/toast";
 
 function Cover({ book }: { book: Book }) {
   const [failed, setFailed] = useState(false);
@@ -41,14 +45,15 @@ function Cover({ book }: { book: Book }) {
 }
 
 export function BookDetail({ id }: { id: string }) {
+  const { user } = useAuth();
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Borrow action states
+  // Borrow modal + action states
+  const [borrowModalOpen, setBorrowModalOpen] = useState(false);
   const [borrowing, setBorrowing] = useState(false);
   const [borrowed, setBorrowed] = useState(false);
-  const [borrowError, setBorrowError] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -74,24 +79,45 @@ export function BookDetail({ id }: { id: string }) {
     return () => controller.abort();
   }, [id]);
 
-  const handleBorrow = async () => {
+  const handleBorrowConfirm = async () => {
+    if (!book) return;
     setBorrowing(true);
-    setBorrowError(null);
 
     try {
-      const res = await fetch(`/api/books/${id}/borrow`, {
+      await apiFetch("/borrows", {
         method: "POST",
+        body: JSON.stringify({
+          bookId: id,
+          bookTitle: book.title,
+          bookImage: book.image,
+          userName: user?.name,
+          userEmail: user?.email,
+          borrowDate: new Date().toISOString(),
+          returnDate: new Date(
+            Date.now() + 7 * 24 * 60 * 60 * 1000
+          ).toISOString(),
+        }),
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || "Failed to process borrow request.");
-      }
-
+      setBook((current) =>
+        current
+          ? {
+              ...current,
+              availableCopies: Math.max(
+                0,
+                Number(current.availableCopies ?? 0) - 1
+              ),
+            }
+          : current
+      );
       setBorrowed(true);
+      setBorrowModalOpen(false);
+      showToast.success(`You borrowed “${book.title}”. Happy reading!`);
     } catch (err: unknown) {
-      setBorrowError(
-        err instanceof Error ? err.message : "Could not borrow this book at the moment."
+      showToast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Could not borrow this book at the moment."
       );
     } finally {
       setBorrowing(false);
@@ -211,35 +237,22 @@ export function BookDetail({ id }: { id: string }) {
 
             <button
               type="button"
-              onClick={handleBorrow}
-              disabled={!isAvailable || borrowing || borrowed}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white transition shadow-sm",
-                borrowed
-                  ? "bg-emerald-600 cursor-default"
-                  : !isAvailable
-                  ? "bg-ink-muted/40 cursor-not-allowed"
-                  : "bg-brand hover:bg-brand-dark"
-              )}
+              onClick={() => setBorrowModalOpen(true)}
+              disabled={!isAvailable || borrowed}
+              className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white transition shadow-sm bg-brand hover:bg-brand-dark disabled:bg-ink-muted/40 disabled:cursor-not-allowed"
             >
               {borrowed ? (
                 <>
                   <BookmarkCheckIcon className="size-4" />
-                  Borrowed Successfully
+                  Borrowed
                 </>
-              ) : borrowing ? (
-                "Processing..."
+              ) : !isAvailable ? (
+                "Out of stock"
               ) : (
                 "Borrow This Book"
               )}
             </button>
           </div>
-
-          {borrowError && (
-            <p className="mt-3 text-xs font-medium text-rose-600">
-              {borrowError}
-            </p>
-          )}
         </div>
 
         <div className="mt-8">
@@ -252,6 +265,105 @@ export function BookDetail({ id }: { id: string }) {
           </Link>
         </div>
       </div>
+
+      {/* BORROW CONFIRMATION MODAL */}
+      {borrowModalOpen && book ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between border-b border-line pb-4">
+              <h2 className="text-lg font-bold text-ink">Borrow This Book</h2>
+              <button
+                type="button"
+                onClick={() => setBorrowModalOpen(false)}
+                aria-label="Close borrow form"
+                className="rounded-full p-1.5 text-ink-muted hover:bg-brand-soft"
+              >
+                <XIcon className="size-5" />
+              </button>
+            </div>
+
+            <div className="mt-4 flex items-center gap-4 rounded-2xl bg-brand-tint p-4">
+              {book.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={book.image}
+                  alt=""
+                  className="h-20 w-14 shrink-0 rounded-lg object-cover"
+                />
+              ) : (
+                <span className="flex h-20 w-14 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand">
+                  <BookOpenIcon className="size-5" />
+                </span>
+              )}
+              <div>
+                <p className="font-bold text-ink">{book.title}</p>
+                <p className="text-xs text-ink-muted">by {book.author}</p>
+                <p className="mt-1 text-[11px] font-medium text-emerald-700">
+                  Due back in 7 days
+                </p>
+              </div>
+            </div>
+
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleBorrowConfirm();
+              }}
+              className="mt-4 space-y-4"
+            >
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink">
+                  User Name (Logged In)
+                </label>
+                <input
+                  value={user?.name || ""}
+                  readOnly
+                  disabled
+                  className="w-full cursor-not-allowed rounded-xl border border-line bg-slate-50 px-3.5 py-2 text-sm text-ink-muted"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink">
+                  User Email (Logged In)
+                </label>
+                <input
+                  value={user?.email || ""}
+                  readOnly
+                  disabled
+                  className="w-full cursor-not-allowed rounded-xl border border-line bg-slate-50 px-3.5 py-2 text-sm text-ink-muted"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-line pt-4">
+                <button
+                  type="button"
+                  onClick={() => setBorrowModalOpen(false)}
+                  className="rounded-full px-4 py-2 text-sm font-semibold text-ink-muted hover:bg-brand-soft"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={borrowing}
+                  className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-60"
+                >
+                  {borrowing ? (
+                    <>
+                      <Loader2Icon className="size-4 animate-spin" />
+                      Borrowing...
+                    </>
+                  ) : (
+                    <>
+                      <BookmarkCheckIcon className="size-4" />
+                      Confirm Borrow
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </article>
   );
 }

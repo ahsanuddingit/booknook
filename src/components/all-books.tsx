@@ -291,7 +291,7 @@ export function AllBooks() {
 
       <div className="mt-5">
         {state === "loading" ? (
-          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
             {Array.from({ length: 8 }).map((_, index) => (
               <CardSkeleton key={index} />
             ))}
@@ -332,7 +332,7 @@ export function AllBooks() {
               nook.
             </p>
             <Link
-              href="/books/add"
+              href="/add-book"
               className={cn(
                 buttonVariants({ size: "lg" }),
                 "mt-6 h-10 gap-2 rounded-full px-5"
@@ -367,7 +367,7 @@ export function AllBooks() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
               {filtered.map((book) => (
                 <BookCard key={book._id} book={book} />
               ))}

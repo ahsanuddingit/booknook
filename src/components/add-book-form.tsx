@@ -13,6 +13,7 @@ import {
   PlusIcon,
   RotateCcwIcon,
   SparklesIcon,
+  UploadIcon,
 } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
@@ -21,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { API_URL, ApiError, apiFetch } from "@/lib/api";
+import { showToast } from "@/lib/toast";
 import { cn } from "cn";
 
 const CATEGORIES = [
@@ -30,6 +32,11 @@ const CATEGORIES = [
   "Kids",
   "Others",
 ] as const;
+
+// imgbb upload requires a free API key from https://api.imgbb.com
+const IMGBB_API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY ?? "";
+const IMGBB_UPLOAD_URL = "https://api.imgbb.com/1/upload";
+const MAX_UPLOAD_BYTES = 32 * 1024 * 1024;
 
 type FormValues = {
   title: string;
@@ -101,6 +108,71 @@ export function AddBookForm() {
     id: string;
   } | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  async function handleImageUpload(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0];
+    // Allow picking the same file twice in a row.
+    event.target.value = "";
+    if (!file) return;
+
+    setUploadError(null);
+
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please choose an image file (jpg, png, webp...).");
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setUploadError("That image is too large. imgbb accepts up to 32 MB.");
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("Could not read the file."));
+        reader.readAsDataURL(file);
+      });
+
+      const base64 = dataUrl.replace(/^data:[^;]+;base64,/, "");
+
+      const body = new FormData();
+      body.append("key", IMGBB_API_KEY);
+      body.append("image", base64);
+
+      const response = await fetch(IMGBB_UPLOAD_URL, {
+        method: "POST",
+        body,
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        data?: { url?: string; display_url?: string };
+        error?: { message?: string };
+      } | null;
+
+      const url = payload?.data?.url ?? payload?.data?.display_url;
+      if (!response.ok || !url) {
+        throw new Error(
+          payload?.error?.message || "imgbb rejected the upload. Try again."
+        );
+      }
+
+      updateField("image", url);
+    } catch (error) {
+      setUploadError(
+        error instanceof Error
+          ? error.message
+          : "Upload failed. You can still paste an image URL manually."
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const ids = {
     title: `${formId}-title`,
@@ -170,6 +242,7 @@ export function AddBookForm() {
       });
 
       setCreated({ title: values.title.trim(), id: result.insertedId });
+      showToast.success(`“${values.title.trim()}” was added to the shelves!`);
       setValues(INITIAL_VALUES);
       setErrors({});
     } catch (error) {
@@ -386,10 +459,10 @@ export function AddBookForm() {
             )}
           </div>
 
-          {/* Cover Image URL */}
+          {/* Book Image (upload to imgbb or paste a URL) */}
           <div>
             <Label htmlFor={ids.image} className="text-[13px] font-semibold text-ink">
-              Cover image URL <span className="text-brand">*</span>
+              Book image <span className="text-brand">*</span>
             </Label>
             <Input
               id={ids.image}
@@ -397,20 +470,57 @@ export function AddBookForm() {
               value={values.image}
               onChange={(event) => updateField("image", event.target.value)}
               onBlur={() => validateOne("image")}
-              placeholder="https://images.example.com/cover.jpg"
+              placeholder="https://i.ibb.co/cover.jpg"
               autoComplete="off"
               spellCheck={false}
               aria-invalid={Boolean(errors.image)}
               aria-describedby={errors.image ? `${ids.image}-error` : undefined}
               className={cn(fieldClass, "mt-2")}
             />
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <input
+                id={`${ids.image}-file`}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={!IMGBB_API_KEY || uploading}
+                className="sr-only"
+              />
+              {uploading ? (
+                <span className="inline-flex h-9 items-center gap-2 rounded-full border border-line bg-brand-soft px-4 text-xs font-semibold text-brand">
+                  <Loader2Icon className="size-3.5 animate-spin" />
+                  Uploading to imgbb...
+                </span>
+              ) : (
+                <label
+                  htmlFor={`${ids.image}-file`}
+                  aria-disabled={!IMGBB_API_KEY}
+                  className={cn(
+                    "inline-flex h-9 cursor-pointer items-center gap-2 rounded-full border border-line bg-white px-4 text-xs font-semibold text-ink transition hover:border-brand/40 hover:text-brand",
+                    !IMGBB_API_KEY && "pointer-events-none opacity-50"
+                  )}
+                >
+                  <UploadIcon className="size-3.5" />
+                  Upload to imgbb
+                </label>
+              )}
+            </div>
+            {!IMGBB_API_KEY ? (
+              <p className="mt-1.5 text-xs text-ink-muted">
+                Direct upload is off — set NEXT_PUBLIC_IMGBB_API_KEY in .env. You
+                can paste an imgbb/postimage link instead.
+              </p>
+            ) : null}
+            {uploadError ? (
+              <p className="mt-1.5 text-xs text-destructive">{uploadError}</p>
+            ) : null}
             {errors.image ? (
               <p id={`${ids.image}-error`} className="mt-1.5 text-xs text-destructive">
                 {errors.image}
               </p>
             ) : (
               <p className="mt-1.5 text-xs text-ink-muted">
-                A direct link works best (imgbb / postimage).
+                Or paste a direct image link (imgbb / postimage).
               </p>
             )}
           </div>

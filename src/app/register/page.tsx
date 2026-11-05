@@ -170,4 +170,22 @@ export default function RegisterPage() {
           <Button
             type="submit"
             disabled={pending}
-            className="h-11 w-full rounded-full bg-gradient-to-r from-[#9a7bf1] to-[#7a5bdf] text-[15px] font-semibold text-white shadow-[0_10px_24px_-10px_rgba(122,9
+            className="h-11 w-full rounded-full bg-gradient-to-r from-[#9a7bf1] to-[#7a5bdf] text-[15px] font-semibold text-white shadow-[0_10px_24px_-10px_rgba(122,91,223,0.45)]"
+          >
+            {pending ? "Creating account..." : "Create account"}
+          </Button>
+
+          <p className="text-center text-[13px] text-ink-muted">
+            Already have an account?{" "}
+            <Link
+              href="/login"
+              className="font-semibold text-brand hover:underline"
+            >
+              Sign in
+            </Link>
+          </p>
+        </form>
+      </div>
+    </section>
+  );
+}

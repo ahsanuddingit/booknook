@@ -296,7 +296,7 @@ export function TrendingBooks() {
               find.
             </p>
             <Link
-              href="/books/add"
+              href="/add-book"
               className={cn(
                 buttonVariants({ size: "lg" }),
                 "mt-6 h-10 gap-2 rounded-full px-5"
